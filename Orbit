@@ -1,0 +1,462 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- 1. Setup Container
+local Parent = (gethui and gethui()) or game:GetService("CoreGui"):FindFirstChild("RobloxGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+if Parent:FindFirstChild("Cemetry_V3") then Parent.Cemetry_V3:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Cemetry_V3"
+ScreenGui.Parent = Parent
+ScreenGui.IgnoreGuiInset = true
+
+-- 2. Theme Colors
+local Theme = {
+	Back = Color3.fromRGB(11, 12, 16),
+	Header = Color3.fromRGB(15, 16, 21),
+	Accent = Color3.fromRGB(45, 100, 245),
+	Border = Color3.fromRGB(35, 37, 45),
+	Text = Color3.fromRGB(220, 220, 220),
+	DarkText = Color3.fromRGB(110, 110, 115),
+	Font = Enum.Font.Code
+}
+
+-- 3. Main Window
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 420, 0, 280)
+Main.Position = UDim2.new(0.5, -210, 0.5, -140)
+Main.BackgroundColor3 = Theme.Back
+Main.BorderSizePixel = 0
+Main.Active = true 
+Main.Parent = ScreenGui
+
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Theme.Border
+
+-- 4. Dragging Logic
+local function MakeDraggable(topBar, object)
+	local dragging, dragStart, startPos, activeInput
+	topBar.InputBegan:Connect(function(input)
+		if not dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+			dragging = true
+			activeInput = input
+			dragStart = input.Position
+			startPos = object.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+					activeInput = nil
+				end
+			end)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input == activeInput then
+			local delta = input.Position - dragStart
+			object.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
+
+-- 5. Header & Tabs
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 30)
+Header.BackgroundColor3 = Theme.Header
+Header.BorderSizePixel = 0
+Header.Parent = Main
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 4)
+
+local Title = Instance.new("TextLabel")
+Title.Text = " cemetry.lua"
+Title.Size = UDim2.new(0, 200, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Theme.DarkText
+Title.Font = Theme.Font
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+MakeDraggable(Header, Main)
+
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, 0, 0, 25)
+TabBar.Position = UDim2.new(0, 0, 0, 30)
+TabBar.BackgroundColor3 = Theme.Header
+TabBar.BorderSizePixel = 0
+TabBar.Parent = Main
+
+local MainTabBtn = Instance.new("TextButton")
+MainTabBtn.Text = "main"
+MainTabBtn.Size = UDim2.new(0, 50, 1, 0)
+MainTabBtn.Position = UDim2.new(0, 20, 0, 0)
+MainTabBtn.BackgroundTransparency = 1
+MainTabBtn.TextColor3 = Theme.Text
+MainTabBtn.Font = Theme.Font
+MainTabBtn.TextSize = 13
+MainTabBtn.Parent = TabBar
+
+local BlueLine = Instance.new("Frame")
+BlueLine.Size = UDim2.new(0, 40, 0, 2)
+BlueLine.Position = UDim2.new(0, 25, 1, -2)
+BlueLine.BackgroundColor3 = Theme.Accent
+BlueLine.BorderSizePixel = 0
+BlueLine.Parent = TabBar
+
+local CharTabBtn = Instance.new("TextButton")
+CharTabBtn.Text = "character"
+CharTabBtn.Size = UDim2.new(0, 80, 1, 0)
+CharTabBtn.Position = UDim2.new(0, 75, 0, 0)
+CharTabBtn.BackgroundTransparency = 1
+CharTabBtn.TextColor3 = Theme.DarkText
+CharTabBtn.Font = Theme.Font
+CharTabBtn.TextSize = 13
+CharTabBtn.Parent = TabBar
+
+-- 6. Content Containers
+local MainContainer = Instance.new("Frame")
+MainContainer.Size = UDim2.new(1, -40, 1, -80)
+MainContainer.Position = UDim2.new(0, 20, 0, 75)
+MainContainer.BackgroundTransparency = 1
+MainContainer.Visible = true
+MainContainer.Parent = Main
+Instance.new("UIListLayout", MainContainer).Padding = UDim.new(0, 20)
+
+local CharContainer = Instance.new("Frame")
+CharContainer.Size = UDim2.new(1, -40, 1, -80)
+CharContainer.Position = UDim2.new(0, 20, 0, 75)
+CharContainer.BackgroundTransparency = 1
+CharContainer.Visible = false
+CharContainer.ClipsDescendants = false
+CharContainer.Parent = Main
+Instance.new("UIListLayout", CharContainer).Padding = UDim.new(0, 20)
+
+-- Tab Switching Logic
+MainTabBtn.MouseButton1Click:Connect(function()
+	MainContainer.Visible = true
+	CharContainer.Visible = false
+	MainTabBtn.TextColor3 = Theme.Text
+	CharTabBtn.TextColor3 = Theme.DarkText
+	TweenService:Create(BlueLine, TweenInfo.new(0.2), {Position = UDim2.new(0, 25, 1, -2), Size = UDim2.new(0, 40, 0, 2)}):Play()
+end)
+
+CharTabBtn.MouseButton1Click:Connect(function()
+	MainContainer.Visible = false
+	CharContainer.Visible = true
+	MainTabBtn.TextColor3 = Theme.DarkText
+	CharTabBtn.TextColor3 = Theme.Text
+	TweenService:Create(BlueLine, TweenInfo.new(0.2), {Position = UDim2.new(0, 85, 1, -2), Size = UDim2.new(0, 60, 0, 2)}):Play()
+end)
+
+-- 7. Feature Variables
+local Features = {
+	VoidSpam = {Enabled = false, Value = -6700000},
+	Orbit = {Enabled = false, Value = 250},
+	AnimEnabled = false,
+	SelectedAnim = "Solar system",
+	AnimSpeed = 1
+}
+
+local AnimList = {
+	"Solar system", "Zesty sturdy", "Floss", "67", "Push ups", "Take The L"
+}
+local AnimIDs = {
+	["Solar system"] = "rbxassetid://92281817840531",
+	["Zesty sturdy"] = "rbxassetid://136037836393259",
+	["Floss"] = "rbxassetid://5917570207",
+	["67"] = "rbxassetid://92707729249136",
+	["Push ups"] = "rbxassetid://73630423562709",
+	["Take The L"] = "rbxassetid://112884830175040"
+}
+
+local currentTrack = nil
+
+local function PlayAnim()
+	if currentTrack then currentTrack:Stop(); currentTrack = nil end
+	if not Features.AnimEnabled then return end
+	
+	local char = Players.LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local animator = hum and hum:FindFirstChildOfClass("Animator")
+	
+	if animator then
+		local animation = Instance.new("Animation")
+		local catalogId = AnimIDs[Features.SelectedAnim]
+		
+		local success, result = pcall(function()
+			local objects = game:GetObjects(catalogId)
+			for _, obj in pairs(objects) do
+				if obj:IsA("Animation") then return obj.AnimationId end
+				local found = obj:FindFirstChildWhichIsA("Animation", true)
+				if found then return found.AnimationId end
+			end
+		end)
+
+		animation.AnimationId = (success and result) or catalogId
+
+		currentTrack = animator:LoadAnimation(animation)
+		currentTrack.Looped = true
+		currentTrack.Priority = Enum.AnimationPriority.Action4
+		currentTrack:Play()
+	end
+end
+
+Players.LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if Features.AnimEnabled then PlayAnim() end
+end)
+
+-- Logic Loop
+RunService.Heartbeat:Connect(function()
+	local char = Players.LocalPlayer.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+	if hrp and hum then
+		-- Enhanced Map Death Fix
+		if Features.VoidSpam.Enabled or Features.Orbit.Enabled then
+			hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+			hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+			hrp.Velocity = Vector3.new(0,0,0) -- Stop falling velocity
+			if hum.Health > 0 and hum.Health < 1 then hum.Health = 100 end -- Instant health recovery
+		else
+			hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+		end
+
+		if Features.VoidSpam.Enabled then
+			hrp.CFrame = CFrame.new(hrp.Position.X, Features.VoidSpam.Value, hrp.Position.Z)
+		end
+		if Features.Orbit.Enabled then
+			local spread = Features.Orbit.Value
+			hrp.CFrame = CFrame.new(hrp.Position + Vector3.new(math.random(-spread, spread), math.random(-spread, spread), math.random(-spread, spread)))
+		end
+        
+        if currentTrack and currentTrack.IsPlaying then
+            currentTrack:AdjustSpeed(Features.AnimSpeed)
+        end
+	end
+end)
+
+-- 8. Component Builders
+local function CreateFeature(name, subLabel, min, max, default, parent, featureKey)
+	local Frame = Instance.new("Frame")
+	Frame.Size = UDim2.new(1, 0, 0, 70)
+	Frame.BackgroundTransparency = 1
+	Frame.Parent = parent
+
+	local Toggle = Instance.new("TextButton")
+	Toggle.Size = UDim2.new(0, 14, 0, 14)
+	Toggle.BackgroundColor3 = Theme.Header
+	Toggle.Text = ""
+	Toggle.AutoButtonColor = false
+	Toggle.Parent = Frame
+	Instance.new("UIStroke", Toggle).Color = Theme.Border
+	
+	Toggle.MouseButton1Click:Connect(function()
+		Features[featureKey].Enabled = not Features[featureKey].Enabled
+		TweenService:Create(Toggle, TweenInfo.new(0.1), {BackgroundColor3 = Features[featureKey].Enabled and Theme.Accent or Theme.Header}):Play()
+	end)
+
+	local NameLabel = Instance.new("TextLabel")
+	NameLabel.Text = name
+	NameLabel.Position = UDim2.new(0, 22, 0, 0)
+	NameLabel.Size = UDim2.new(0, 100, 0, 14)
+	NameLabel.BackgroundTransparency = 1
+	NameLabel.TextColor3 = Theme.Text
+	NameLabel.Font = Theme.Font
+	NameLabel.TextSize = 13
+	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	NameLabel.Parent = Frame
+
+	local ValLabel = Instance.new("TextLabel")
+	ValLabel.Text = subLabel .. ": " .. default
+	ValLabel.Position = UDim2.new(0, 0, 0, 22)
+	ValLabel.Size = UDim2.new(1, 0, 0, 20)
+	ValLabel.BackgroundTransparency = 1
+	ValLabel.TextColor3 = Theme.DarkText
+	ValLabel.Font = Theme.Font
+	ValLabel.TextSize = 12
+	ValLabel.TextXAlignment = Enum.TextXAlignment.Left
+	ValLabel.Parent = Frame
+
+	local SliderBG = Instance.new("TextButton")
+	SliderBG.Size = UDim2.new(1, -70, 0, 4)
+	SliderBG.Position = UDim2.new(0, 0, 0, 50)
+	SliderBG.BackgroundColor3 = Theme.Header
+	SliderBG.Text = ""
+	SliderBG.AutoButtonColor = false
+	SliderBG.BorderSizePixel = 0
+	SliderBG.Parent = Frame
+	
+	local SliderFill = Instance.new("Frame")
+	local initPerc = (default - min) / (max - min)
+	SliderFill.Size = UDim2.new(initPerc, 0, 1, 0)
+	SliderFill.BackgroundColor3 = Theme.Accent
+	SliderFill.BorderSizePixel = 0
+	SliderFill.Parent = SliderBG
+
+	local isSliding = false
+	local activeSliderInput
+	
+	local function UpdateSlider(input)
+		local barPos = SliderBG.AbsolutePosition.X
+		local barSize = SliderBG.AbsoluteSize.X
+		local perc = math.clamp((input.Position.X - barPos) / barSize, 0, 1)
+		SliderFill.Size = UDim2.new(perc, 0, 1, 0)
+		local val = min + (perc * (max - min))
+		if max > 10 then val = math.floor(val) else val = math.round(val * 10) / 10 end
+		ValLabel.Text = subLabel .. ": " .. val
+		Features[featureKey].Value = val
+	end
+
+	SliderBG.InputBegan:Connect(function(input)
+		if not isSliding and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+			isSliding = true
+			activeSliderInput = input
+			UpdateSlider(input)
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					isSliding = false
+					activeSliderInput = nil
+				end
+			end)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if isSliding and input == activeSliderInput then UpdateSlider(input) end
+	end)
+end
+
+-- Simplified Slider for Anim Speed (No Toggle)
+local function CreateAnimSpeedSlider()
+	local Frame = Instance.new("Frame")
+	Frame.Size = UDim2.new(1, 0, 0, 50)
+	Frame.BackgroundTransparency = 1
+	Frame.Parent = CharContainer
+
+	local ValLabel = Instance.new("TextLabel")
+	ValLabel.Text = "animation speed: 1"
+	ValLabel.Size = UDim2.new(1, 0, 0, 20)
+	ValLabel.BackgroundTransparency = 1
+	ValLabel.TextColor3 = Theme.DarkText
+	ValLabel.Font = Theme.Font
+	ValLabel.TextSize = 12
+	ValLabel.TextXAlignment = Enum.TextXAlignment.Left
+	ValLabel.Parent = Frame
+
+	local SliderBG = Instance.new("TextButton")
+	SliderBG.Size = UDim2.new(1, -70, 0, 4)
+	SliderBG.Position = UDim2.new(0, 0, 0, 30)
+	SliderBG.BackgroundColor3 = Theme.Header
+	SliderBG.Text = ""
+	SliderBG.BorderSizePixel = 0
+	SliderBG.Parent = Frame
+	
+	local SliderFill = Instance.new("Frame")
+	SliderFill.Size = UDim2.new(0.1, 0, 1, 0) -- Starts at speed 1 (1/10)
+	SliderFill.BackgroundColor3 = Theme.Accent
+	SliderFill.BorderSizePixel = 0
+	SliderFill.Parent = SliderBG
+
+	local isSliding = false
+	local function UpdateSpeed(input)
+		local p = math.clamp((input.Position.X - SliderBG.AbsolutePosition.X) / SliderBG.AbsoluteSize.X, 0, 1)
+		SliderFill.Size = UDim2.new(p, 0, 1, 0)
+		local val = math.round(p * 10 * 10) / 10
+		ValLabel.Text = "animation speed: " .. val
+		Features.AnimSpeed = val
+	end
+
+	SliderBG.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSliding = true UpdateSpeed(input) end end)
+	UserInputService.InputChanged:Connect(function(input) if isSliding then UpdateSpeed(input) end end)
+	UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSliding = false end end)
+end
+
+local function CreateAnimToggle()
+	local Frame = Instance.new("Frame")
+	Frame.Size = UDim2.new(1, 0, 0, 60)
+	Frame.BackgroundTransparency = 1
+	Frame.Parent = CharContainer
+	Frame.ZIndex = 5
+
+	local Toggle = Instance.new("TextButton")
+	Toggle.Size = UDim2.new(0, 14, 0, 14)
+	Toggle.BackgroundColor3 = Theme.Header
+	Toggle.Text = ""
+	Toggle.Parent = Frame
+	Instance.new("UIStroke", Toggle).Color = Theme.Border
+	
+	Toggle.MouseButton1Click:Connect(function()
+		Features.AnimEnabled = not Features.AnimEnabled
+		Toggle.BackgroundColor3 = Features.AnimEnabled and Theme.Accent or Theme.Header
+		PlayAnim()
+	end)
+
+	local L = Instance.new("TextLabel")
+	L.Text = "player animations"
+	L.Position = UDim2.new(0, 22, 0, 0)
+	L.Size = UDim2.new(0, 150, 0, 14)
+	L.BackgroundTransparency = 1
+	L.TextColor3 = Theme.Text
+	L.Font = Theme.Font
+	L.TextSize = 13
+	L.TextXAlignment = Enum.TextXAlignment.Left
+	L.Parent = Frame
+
+	local Dropdown = Instance.new("TextButton")
+	Dropdown.Size = UDim2.new(1, 0, 0, 25)
+	Dropdown.Position = UDim2.new(0, 0, 0, 25)
+	Dropdown.BackgroundColor3 = Theme.Header
+	Dropdown.TextColor3 = Theme.Accent
+	Dropdown.Text = " Select: Solar system"
+	Dropdown.Font = Theme.Font
+	Dropdown.TextSize = 12
+	Dropdown.TextXAlignment = Enum.TextXAlignment.Left
+	Dropdown.Parent = Frame
+	Instance.new("UIStroke", Dropdown).Color = Theme.Border
+
+	local DropList = Instance.new("ScrollingFrame")
+	DropList.Size = UDim2.new(1, 0, 0, 100)
+	DropList.Position = UDim2.new(0, 0, 1, 1)
+	DropList.BackgroundColor3 = Theme.Back
+	DropList.Visible = false
+	DropList.ZIndex = 100
+	DropList.CanvasSize = UDim2.new(0, 0, 0, 160)
+	DropList.ScrollBarThickness = 2
+	DropList.Parent = Dropdown
+	Instance.new("UIListLayout", DropList)
+
+	Dropdown.MouseButton1Click:Connect(function() DropList.Visible = not DropList.Visible end)
+
+	for _, name in pairs(AnimList) do
+		local Opt = Instance.new("TextButton")
+		Opt.Size = UDim2.new(1, 0, 0, 25)
+		Opt.BackgroundColor3 = Theme.Header
+		Opt.TextColor3 = Theme.Text
+		Opt.Text = " " .. name
+		Opt.Font = Theme.Font
+		Opt.TextSize = 11
+		Opt.TextXAlignment = Enum.TextXAlignment.Left
+		Opt.Parent = DropList
+		Opt.ZIndex = 101
+		
+		Opt.MouseButton1Click:Connect(function()
+			Features.SelectedAnim = name
+			Dropdown.Text = " Select: " .. name
+			DropList.Visible = false
+			if Features.AnimEnabled then PlayAnim() end
+		end)
+	end
+end
+
+-- 9. Add Features
+CreateFeature("void spam", "void drop", -10000000, 0, -6700000, MainContainer, "VoidSpam")
+CreateFeature("orbit", "max spread", 0, 5000, 250, MainContainer, "Orbit") 
+
+CreateAnimToggle()
+CreateAnimSpeedSlider()
+
+print("Cemetry.lua V3 Loaded - Final Fixes Applied")
